@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Send Assessment Invitation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: linear-gradient(135deg, #ff6b35, #e65a28);
+      padding: 28px 32px;
+      text-align: center;
+    }
+    .card-header h1 {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .card-header p {
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .card-body {
+      padding: 32px;
+    }
+    .field {
+      margin-bottom: 20px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 14px;
+      color: #1e293b;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus {
+      border-color: #ff6b35;
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+    .field input::placeholder {
+      color: #94a3b8;
+    }
+    .btn-send {
+      width: 100%;
+      padding: 12px;
+      background: #ff6b35;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-send:hover:not(:disabled) {
+      background: #e65a28;
+    }
+    .btn-send:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      transform: translateX(120%);
+      transition: transform 0.3s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: #16a34a; }
+    .toast.error { background: #dc2626; }
+    .history {
+      margin-top: 20px;
+      border-top: 1px solid #f1f5f9;
+      padding-top: 16px;
+    }
+    .history-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f8fafc;
+      font-size: 13px;
+    }
+    .history-item .email { color: #1e293b; font-weight: 500; }
+    .history-item .time { color: #94a3b8; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <h1>Send Assessment Invitation</h1>
+      <p>QualityAssist Email Sender</p>
+    </div>
+    <div class="card-body">
+      <form id="form">
+        <div class="field">
+          <label>Recipient Email</label>
+          <input type="email" id="email" placeholder="candidate@example.com" required />
+        </div>
+        <div class="field">
+          <label>Job Title</label>
+          <input type="text" id="jobTitle" placeholder="Frontend Developer" required />
+        </div>
+        <div class="field">
+          <label>Company Name</label>
+          <input type="text" id="companyName" placeholder="Acme Corp" required />
+        </div>
+        <div class="field">
+          <label>Assessment Link</label>
+          <input type="url" id="assessmentLink" placeholder="https://quality-assist.com/apply/ABC123" required />
+        </div>
+        <button type="submit" class="btn-send" id="btn">
+          Send Invitation
+        </button>
+      </form>
+      <div class="history" id="history" style="display:none">
+        <div class="history-title">Sent</div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const form = document.getElementById('form');
+    const btn = document.getElementById('btn');
+    const toast = document.getElementById('toast');
+    const history = document.getElementById('history');
+    const historyList = document.getElementById('historyList');
+
+    // Persist last used values
+    ['jobTitle', 'companyName'].forEach(id => {
+      const saved = localStorage.getItem(id);
+      if (saved) document.getElementById(id).value = saved;
+    });
+
+    function showToast(msg, type) {
+      toast.textContent = msg;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function addHistory(email) {
+      history.style.display = 'block';
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `<span class="email">${email}</span><span class="time">${new Date().toLocaleTimeString()}</span>`;
+      historyList.prepend(div);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = {
+        email: document.getElementById('email').value.trim(),
+        jobTitle: document.getElementById('jobTitle').value.trim(),
+        companyName: document.getElementById('companyName').value.trim(),
+        assessmentLink: document.getElementById('assessmentLink').value.trim()
+      };
+
+      // Save for reuse
+      localStorage.setItem('jobTitle', data.jobTitle);
+      localStorage.setItem('companyName', data.companyName);
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Sending...';
+
+      try {
+        const res = await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok) {
+          showToast(`Sent to ${data.email}`, 'success');
+          addHistory(data.email);
+          document.getElementById('email').value = '';
+          document.getElementById('assessmentLink').value = '';
+        } else {
+          showToast(result.error || 'Failed to send', 'error');
+        }
+      } catch (err) {
+        showToast('Network error', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Send Invitation';
+      }
+    });
+  </script>
+</body>
+</html>
